@@ -3,7 +3,6 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Null-Phnix/ghboard/api"
@@ -19,13 +18,14 @@ type notifsLoadedMsg struct {
 type refreshTickMsg struct{}
 
 type NotificationsModel struct {
-	rest      *api.RESTClient
-	notifs    []api.Notification
-	filter    string // "", "PullRequest", "Issue", "CheckSuite", "Release", "Discussion"
-	loading   bool
-	err       error
-	cursor    int
-	statusMsg string
+	rest        *api.RESTClient
+	notifs      []api.Notification
+	filter      string // "", "PullRequest", "Issue", "CheckSuite", "Release", "Discussion"
+	loading     bool
+	err         error
+	cursor      int
+	statusMsg   string
+	lastRefresh time.Time
 }
 
 func NewNotificationsModel(rest *api.RESTClient) NotificationsModel {
@@ -68,6 +68,7 @@ func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 		m.loading = false
 		m.notifs = msg.notifs
 		m.err = msg.err
+		m.lastRefresh = time.Now()
 		visible := m.visible()
 		if m.cursor >= len(visible) {
 			m.cursor = max2(0, len(visible)-1)
@@ -345,8 +346,12 @@ func (m NotificationsModel) View(w, h int) string {
 	if status == "" {
 		status = "r: read  •  R: all read  •  d: dismiss  •  o: open  •  f: filter  •  ctrl+r: refresh"
 	}
+	refreshedStr := ""
+	if !m.lastRefresh.IsZero() {
+		refreshedStr = "  • updated " + relativeTime(m.lastRefresh)
+	}
 	statusBar := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Padding(0, 4).
-		Render(status + scrollInfo)
+		Render(status + scrollInfo + refreshedStr)
 
 	return header + rows + "\n" + statusBar
 }
@@ -393,6 +398,3 @@ func relativeTime(t time.Time) string {
 	}
 }
 
-func strings_contains_fold(s, sub string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
-}

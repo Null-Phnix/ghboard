@@ -1,0 +1,19 @@
+# Binary
+ghboard
+ghboard-*
+
+# Test cache
+*.test
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# VHS output
+*.gif
+*.mp4
