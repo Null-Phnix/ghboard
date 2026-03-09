@@ -1,48 +1,64 @@
 # ghboard
 
-**Your GitHub life, in the terminal.**
+[![CI](https://github.com/Null-Phnix/ghboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Null-Phnix/ghboard/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Null-Phnix/ghboard)](go.mod)
+[![Latest Release](https://img.shields.io/github/v/release/Null-Phnix/ghboard)](https://github.com/Null-Phnix/ghboard/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`ghboard` is a terminal dashboard for GitHub developers who live in the CLI. Three tabs, zero browser required.
+**Stay in your terminal. Browse stars, manage notifications, track contributions — without touching a browser.**
+
+> *Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) · GitHub REST + GraphQL APIs · single static binary*
+
+---
+
+<!-- Record with: vhs demo.tape  (https://github.com/charmbracelet/vhs) -->
+<!-- ![ghboard demo](demo.gif) -->
 
 ```
-  Heatmap   Stars   Notifications
-──────────────────────────────────────────────────────────────────────
-Null-Phnix — 1,247 contributions in 2026   [ prev year ]
-
-    Jan       Feb       Mar       Apr       May
-Sun ░ ░ ░ ░ ▒ ▒ ▒ ▓ ▓ ▓ █ █ █ ▓ ▓ ▒ ▒ ░ ░ ░ ░ ░ ░ ░
-Mon ░ ░ ░ ▒ ▒ ▓ ▓ █ █ ▓ ▓ ▓ ▒ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░
-Tue ▒ ▒ ▓ █ █ █ ▓ ▓ ▒ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░
-Wed ░ ░ ▒ ▒ ▓ █ ▓ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░
-...
-
-📅 2026-03-09 — ████ 7 contributions
-Less ░ ▒ ▓ █ █ More  •  [ / ] year  •  arrows / hjkl navigate
-──────────────────────────────────────────────────────────────────────
-1/2/3: switch tabs  •  Tab: cycle  •  ?: help  •  q: quit
+╔══════════════════════════════════════════════════════════════════════╗
+║  Heatmap   Stars   Notifications                                     ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Null-Phnix — 1,247 contributions in 2026   [ prev year ]           ║
+║                                                                      ║
+║      Jan       Feb       Mar       Apr       May       Jun           ║
+║  Sun ░ ░ ░ ▒ ▒ ▓ █ █ ▓ ▓ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║  Mon ░ ░ ▒ ▒ ▓ █ █ ▓ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║  Tue ▒ ▓ █ █ ▓ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║  Wed ░ ▒ ▓ █ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║  Thu ░ ░ ▒ ▓ █ ▓ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║  Fri ░ ░ ░ ▒ ▒ ▓ █ ▓ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║  Sat ░ ░ ░ ░ ▒ ▒ ▓ █ █ ▓ ▒ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░            ║
+║                                                                      ║
+║  📅 2026-03-09 — ████████ 12 contributions                          ║
+║  Less ░ ▒ ▓ █ █ More  •  [ / ] year  •  arrows / hjkl navigate      ║
+╚══════════════════════════════════════════════════════════════════════╝
 ```
 
-## Features
+## Why ghboard?
+
+If you live in the terminal, switching to a browser to check GitHub notifications, remember which repos you starred, or check your contribution streak breaks your flow. `ghboard` puts all three in one keystroke away — no browser tab, no context switch.
 
 | Tab | What it does |
 |-----|-------------|
-| **Heatmap** | GitHub-style contribution grid with year navigation, day-level detail, live cursor |
-| **Stars** | Browse all starred repos, fuzzy search, tag repos with custom labels, unstar, open in browser |
-| **Notifications** | Inbox-zero workflow — mark read, dismiss, filter by type (PR/Issue/CI/Release), auto-refreshes every 60s |
+| 🗓 **Heatmap** | Full-year GitHub contribution grid · cursor navigation · `[` `]` year toggle · mini bar chart per day |
+| ⭐ **Stars** | Browse all starred repos · fuzzy search · custom tags · language color dots · unstar · open in browser |
+| 🔔 **Notifications** | Mark read / dismiss · filter by type · grouped by repo · relative timestamps · auto-refresh every 60 s |
 
 ## Install
 
-**Homebrew** *(coming soon)*
-```bash
-brew install Null-Phnix/tap/ghboard
-```
-
-**go install** *(Go 1.21+)*
+**go install** *(requires Go 1.21+)*
 ```bash
 go install github.com/Null-Phnix/ghboard@latest
 ```
 
-**Download binary** from [Releases](https://github.com/Null-Phnix/ghboard/releases)
+**From source**
+```bash
+git clone https://github.com/Null-Phnix/ghboard
+cd ghboard
+go build -o ghboard .
+```
+
+Binary releases coming soon for macOS, Linux, and Windows.
 
 ## Setup
 
@@ -50,15 +66,13 @@ go install github.com/Null-Phnix/ghboard@latest
 ghboard
 ```
 
-On first run, `ghboard` asks for a GitHub personal access token. Create one at [github.com/settings/tokens](https://github.com/settings/tokens) with these scopes:
+On first run you'll be prompted for a GitHub personal access token.
+Create one at → **[github.com/settings/tokens](https://github.com/settings/tokens/new?scopes=repo,notifications,read:user)**
 
-- `repo` — read starred repos
-- `notifications` — read & manage notifications
-- `read:user` — fetch contribution data
+Required scopes: `repo` · `notifications` · `read:user`
 
-The token is stored at `~/.config/ghboard/config.json` (mode `0600`).
-
-You can also set `GITHUB_TOKEN` env var to skip the prompt.
+The token is saved to `~/.config/ghboard/config.json` (`0600`).
+You can also `export GITHUB_TOKEN=ghp_...` to skip the prompt.
 
 ## Keyboard Shortcuts
 
@@ -66,74 +80,100 @@ You can also set `GITHUB_TOKEN` env var to skip the prompt.
 
 | Key | Action |
 |-----|--------|
-| `1` / `2` / `3` | Switch to Heatmap / Stars / Notifications tab |
+| `1` / `2` / `3` | Switch tabs |
 | `Tab` | Cycle to next tab |
 | `?` | Toggle help overlay |
 | `q` / `Ctrl+C` | Quit |
 
-### Heatmap
+### 🗓 Heatmap
 
 | Key | Action |
 |-----|--------|
 | `←→↑↓` / `hjkl` | Move cursor |
 | `[` / `]` | Previous / next year |
-| `Ctrl+R` | Refresh data |
+| `Ctrl+R` | Refresh |
 
-### Stars
+### ⭐ Stars
 
 | Key | Action |
 |-----|--------|
-| `↑↓` / `jk` | Navigate list |
-| `g` / `G` | Jump to top / bottom |
-| `/` | Fuzzy search (name, description, language) |
+| `↑↓` / `jk` | Navigate |
+| `g` / `G` | Top / bottom |
+| `/` | Fuzzy search |
 | `Esc` | Clear search |
-| `t` | Add / edit comma-separated tags |
-| `f` | Clear active filter |
-| `u` | Unstar selected repo (confirm with `y`) |
+| `t` | Edit tags (comma-separated) |
+| `f` | Clear filter |
+| `u` | Unstar (confirm `y`) |
 | `o` | Open in browser |
 | `Ctrl+R` | Refresh |
 
-### Notifications
+### 🔔 Notifications
 
 | Key | Action |
 |-----|--------|
-| `↑↓` / `jk` | Navigate list |
-| `g` / `G` | Jump to top / bottom |
-| `r` | Mark selected as read |
-| `R` | Mark all as read |
-| `d` | Dismiss (mark read + remove from list) |
+| `↑↓` / `jk` | Navigate |
+| `g` / `G` | Top / bottom |
+| `r` | Mark as read |
+| `R` | Mark ALL read |
+| `d` | Dismiss |
 | `o` | Open repo in browser |
-| `f` | Cycle filter: All → PR → Issue → CI → Release → Discussion |
+| `f` | Cycle type filter (All → PR → Issue → CI → Release → Discussion) |
 | `Ctrl+R` | Refresh now |
 
 ## Configuration
 
 `~/.config/ghboard/config.json`
-
 ```json
 {
   "token": "ghp_..."
 }
 ```
 
-Tags are stored separately at `~/.config/ghboard/tags.json` and persist across sessions.
+Tags are stored at `~/.config/ghboard/tags.json` and persist across sessions.
+
+## Recording a Demo
+
+A [VHS](https://github.com/charmbracelet/vhs) tape file is included:
+
+```bash
+brew install vhs
+GITHUB_TOKEN=ghp_... vhs demo.tape
+```
+
+This produces `demo.gif` — a scriptable, reproducible terminal recording.
 
 ## Tech Stack
 
-- **[Bubble Tea](https://github.com/charmbracelet/bubbletea)** — TUI framework (Elm architecture)
-- **[Lip Gloss](https://github.com/charmbracelet/lipgloss)** — styling & layout
-- **[Bubbles](https://github.com/charmbracelet/bubbles)** — UI components
-- **GitHub REST API** — stars, notifications
-- **GitHub GraphQL API** — contribution data
+| | |
+|--|--|
+| [Bubble Tea](https://github.com/charmbracelet/bubbletea) | TUI framework (Elm architecture) |
+| [Lip Gloss](https://github.com/charmbracelet/lipgloss) | Styling & layout |
+| [Bubbles](https://github.com/charmbracelet/bubbles) | Spinner components |
+| GitHub REST API | Stars & notifications |
+| GitHub GraphQL API | Contribution heatmap data |
+
+## Roadmap
+
+- [ ] Animated GIF demo
+- [ ] Homebrew tap
+- [ ] Pre-built binaries (GoReleaser)
+- [ ] Sort stars by: recently starred, most ⭐, language
+- [ ] Tag-based filtering in the Stars tab
+- [ ] GitLab support *(most requested — [upvote here](https://github.com/Null-Phnix/ghboard/issues))*
+- [ ] GitHub Enterprise support
+- [ ] Configurable refresh interval
 
 ## Contributing
 
-PRs welcome. Run tests with:
-
 ```bash
-go test ./...
+git clone https://github.com/Null-Phnix/ghboard
+cd ghboard
+go test ./...      # run tests
+go build ./...     # verify build
 ```
+
+PRs and issues welcome. If you want GitLab or another provider, open an issue to show demand.
 
 ## License
 
-MIT
+[MIT](LICENSE) © Null-Phnix

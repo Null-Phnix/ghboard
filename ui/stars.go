@@ -9,6 +9,7 @@ import (
 
 	"github.com/Null-Phnix/ghboard/api"
 	"github.com/Null-Phnix/ghboard/store"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -39,10 +40,14 @@ type StarsModel struct {
 	tagEditing bool
 	tagInput   string
 	statusMsg  string
+	spinner    spinner.Model
 }
 
 func NewStarsModel(rest *api.RESTClient, tags *store.Store) StarsModel {
-	return StarsModel{rest: rest, tags: tags}
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#F1FA8C"))
+	return StarsModel{rest: rest, tags: tags, spinner: sp}
 }
 
 func (m StarsModel) Init() tea.Cmd {
@@ -50,7 +55,9 @@ func (m StarsModel) Init() tea.Cmd {
 		return nil
 	}
 	m.loading = true
-	return func() tea.Msg {
+	return tea.Batch(
+		m.spinner.Tick,
+		func() tea.Msg {
 		var all []api.StarredRepo
 		for page := 1; ; page++ {
 			repos, err := m.rest.ListStars(page)
@@ -63,7 +70,8 @@ func (m StarsModel) Init() tea.Cmd {
 			}
 		}
 		return starsLoadedMsg{repos: all}
-	}
+		},
+	)
 }
 
 func (m *StarsModel) applyFilter() {
@@ -101,6 +109,10 @@ func (m *StarsModel) applyFilter() {
 
 func (m StarsModel) Update(msg tea.Msg) (StarsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	case starsLoadedMsg:
 		m.loading = false
 		m.repos = msg.repos
@@ -303,7 +315,7 @@ func (m StarsModel) View(w, h int) string {
 	if m.loading {
 		return lipgloss.NewStyle().Padding(2, 4).
 			Foreground(lipgloss.Color("#888888")).
-			Render("⟳  Loading your stars…")
+			Render(m.spinner.View() + " Loading your stars…")
 	}
 	if m.err != nil {
 		return lipgloss.NewStyle().Padding(2, 4).

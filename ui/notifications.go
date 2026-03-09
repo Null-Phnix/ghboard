@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Null-Phnix/ghboard/api"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -26,14 +27,18 @@ type NotificationsModel struct {
 	cursor      int
 	statusMsg   string
 	lastRefresh time.Time
+	spinner     spinner.Model
 }
 
 func NewNotificationsModel(rest *api.RESTClient) NotificationsModel {
-	return NotificationsModel{rest: rest}
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
+	return NotificationsModel{rest: rest, spinner: sp}
 }
 
 func (m NotificationsModel) Init() tea.Cmd {
-	return tea.Batch(m.fetchCmd(), m.tickCmd())
+	return tea.Batch(m.fetchCmd(), m.tickCmd(), m.spinner.Tick)
 }
 
 func (m NotificationsModel) fetchCmd() tea.Cmd {
@@ -64,6 +69,10 @@ func (m NotificationsModel) visible() []api.Notification {
 
 func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	case notifsLoadedMsg:
 		m.loading = false
 		m.notifs = msg.notifs
@@ -245,7 +254,7 @@ func (m NotificationsModel) View(w, h int) string {
 
 	if m.loading {
 		return header + "\n\n" + lipgloss.NewStyle().Padding(0, 4).
-			Foreground(lipgloss.Color("#888888")).Render("⟳  Loading…")
+			Foreground(lipgloss.Color("#888888")).Render(m.spinner.View() + " Loading…")
 	}
 	if m.err != nil {
 		return header + "\n\n" + lipgloss.NewStyle().Padding(0, 4).

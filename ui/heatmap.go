@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Null-Phnix/ghboard/api"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -23,26 +24,44 @@ type HeatmapModel struct {
 	err     error
 	cursorX int // week index
 	cursorY int // day index (0=Sun)
+	spinner spinner.Model
 }
 
 func NewHeatmapModel(gql *api.GraphQLClient) HeatmapModel {
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#39d353"))
 	return HeatmapModel{
-		gql:  gql,
-		year: time.Now().Year(),
+		gql:     gql,
+		year:    time.Now().Year(),
+		spinner: sp,
 	}
 }
 
 func (m HeatmapModel) Init() tea.Cmd {
 	m.loading = true
 	year := m.year
-	return func() tea.Msg {
-		data, err := m.gql.FetchContributions(year)
-		return contribLoadedMsg{data: data, err: err}
-	}
+	return tea.Batch(
+		m.spinner.Tick,
+		func() tea.Msg {
+			data, err := m.gql.FetchContributions(year)
+			return contribLoadedMsg{data: data, err: err}
+		},
+	)
 }
 
 func (m HeatmapModel) Update(msg tea.Msg) (HeatmapModel, tea.Cmd) {
+	if m.loading {
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		// Still need to check for contribLoadedMsg below, so fall through
+		_ = cmd
+	}
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	case contribLoadedMsg:
 		m.loading = false
 		m.data = msg.data
@@ -176,7 +195,7 @@ func (m HeatmapModel) View(w, h int) string {
 	if m.loading {
 		return lipgloss.NewStyle().Padding(2, 4).
 			Foreground(lipgloss.Color("#888888")).
-			Render("⟳  Loading contributions…")
+			Render(m.spinner.View() + " Loading contributions…")
 	}
 	if m.err != nil {
 		return lipgloss.NewStyle().Padding(2, 4).
