@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/Null-Phnix/ghboard/api"
@@ -72,6 +73,23 @@ func (m StarsModel) Init() tea.Cmd {
 		return starsLoadedMsg{repos: all}
 		},
 	)
+}
+
+func (m *StarsModel) allTags() []string {
+	seen := make(map[string]struct{})
+	for _, r := range m.repos {
+		for _, t := range m.tags.Get(r.FullName) {
+			if t != "" {
+				seen[t] = struct{}{}
+			}
+		}
+	}
+	tags := make([]string, 0, len(seen))
+	for t := range seen {
+		tags = append(tags, t)
+	}
+	sort.Strings(tags)
+	return tags
 }
 
 func (m *StarsModel) applyFilter() {
@@ -233,6 +251,10 @@ func (m StarsModel) Update(msg tea.Msg) (StarsModel, tea.Cmd) {
 			if m.search != "" {
 				m.search = ""
 				m.applyFilter()
+			} else if m.filterTag != "" {
+				m.filterTag = ""
+				m.applyFilter()
+				m.statusMsg = "Filter cleared"
 			}
 		case "t":
 			if m.cursor < len(m.filtered) {
@@ -249,11 +271,29 @@ func (m StarsModel) Update(msg tea.Msg) (StarsModel, tea.Cmd) {
 				openBrowser(m.filtered[m.cursor].HTMLURL)
 			}
 		case "f":
-			// Cycle through available languages from loaded repos
-			m.filterTag = ""
-			m.filterLang = ""
-			m.applyFilter()
-			m.statusMsg = "Filter cleared"
+			tags := m.allTags()
+			if len(tags) == 0 {
+				m.statusMsg = "No tags yet — press t to add some"
+			} else {
+				// Build cycle list: ["", tag1, tag2, ...]
+				cycle := append([]string{""}, tags...)
+				idx := 0
+				for i, v := range cycle {
+					if v == m.filterTag {
+						idx = i
+						break
+					}
+				}
+				idx = (idx + 1) % len(cycle)
+				m.filterTag = cycle[idx]
+				m.filterLang = ""
+				m.applyFilter()
+				if m.filterTag == "" {
+					m.statusMsg = "Filter cleared"
+				} else {
+					m.statusMsg = "Filter: #" + m.filterTag
+				}
+			}
 		case "ctrl+r":
 			m.repos = nil
 			m.statusMsg = ""
@@ -330,7 +370,15 @@ func (m StarsModel) View(w, h int) string {
 	if showing != total {
 		countStr += fmt.Sprintf("  (showing %d)", showing)
 	}
-	header := lipgloss.NewStyle().Bold(true).Padding(1, 4).Render(countStr)
+	headerContent := lipgloss.NewStyle().Bold(true).Render(countStr)
+	if m.filterTag != "" {
+		tagLabel := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#BD93F9")).
+			Bold(true).
+			Render("  #" + m.filterTag)
+		headerContent += tagLabel
+	}
+	header := lipgloss.NewStyle().Padding(1, 4).Render(headerContent)
 
 	// Search bar
 	if m.searching || m.search != "" {
@@ -443,7 +491,7 @@ func (m StarsModel) View(w, h int) string {
 	// Status message
 	status := m.statusMsg
 	if status == "" {
-		status = "/: search  •  t: tags  •  f: clear filter  •  u: unstar  •  o: open  •  ctrl+r: refresh"
+		status = "/: search  •  t: tags  •  f: cycle tag filter  •  u: unstar  •  o: open  •  ctrl+r: refresh"
 	}
 	statusBar := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Padding(0, 4).
 		Render(status + scrollInfo)
