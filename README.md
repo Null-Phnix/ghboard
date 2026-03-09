@@ -51,14 +51,29 @@ If you live in the terminal, switching to a browser to check GitHub notification
 go install github.com/Null-Phnix/ghboard@latest
 ```
 
+**Download a pre-built binary**
+
+Grab the latest release for your platform from the [releases page](https://github.com/Null-Phnix/ghboard/releases/latest).
+
+Supported platforms:
+- macOS — Intel (x86_64) and Apple Silicon (ARM64)
+- Linux — x86_64 and ARM64
+- Windows — x86_64
+
+Extract the archive and place the `ghboard` binary somewhere on your `$PATH`.
+
+**Homebrew** *(coming soon)*
+```bash
+brew install Null-Phnix/tap/ghboard
+```
+> The tap is not live yet — watch this repo for updates.
+
 **From source**
 ```bash
 git clone https://github.com/Null-Phnix/ghboard
 cd ghboard
 go build -o ghboard .
 ```
-
-Binary releases coming soon for macOS, Linux, and Windows.
 
 ## Setup
 
@@ -155,8 +170,8 @@ This produces `demo.gif` — a scriptable, reproducible terminal recording.
 ## Roadmap
 
 - [ ] Animated GIF demo
-- [ ] Homebrew tap
-- [ ] Pre-built binaries (GoReleaser)
+- [x] Homebrew tap (configured, coming soon)
+- [x] Pre-built binaries (GoReleaser)
 - [ ] Sort stars by: recently starred, most ⭐, language
 - [ ] Tag-based filtering in the Stars tab
 - [ ] GitLab support *(most requested — [upvote here](https://github.com/Null-Phnix/ghboard/issues))*
