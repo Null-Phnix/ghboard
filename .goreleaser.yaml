@@ -25,7 +25,7 @@ builds:
 
 archives:
   - id: ghboard
-    builds:
+    ids:
       - ghboard
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
@@ -44,22 +44,7 @@ release:
   github:
     owner: Null-Phnix
     name: ghboard
-  use_existing_draft: true
-  replace_existing_draft: true
   prerelease: auto
-
-brews:
-  - name: ghboard
-    repository:
-      owner: Null-Phnix
-      name: homebrew-tap
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    homepage: "https://github.com/Null-Phnix/ghboard"
-    description: "Terminal dashboard for GitHub: heatmap, stars, and notifications in one TUI."
-    license: "MIT"
-    skip_upload: true
 
 changelog:
   sort: asc
