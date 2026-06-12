@@ -3,6 +3,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Null-Phnix/ghboard/api"
@@ -14,15 +15,18 @@ import (
 type notifsLoadedMsg struct {
 	notifs []api.Notification
 	err    error
+	isGL   bool
 }
 
 type refreshTickMsg struct{}
 
 type NotificationsModel struct {
 	rest        *api.RESTClient
+	gl          *api.GitLabClient
 	notifs      []api.Notification
 	filter      string // "", "PullRequest", "Issue", "CheckSuite", "Release", "Discussion"
 	loading     bool
+	glLoading   bool
 	err         error
 	cursor      int
 	statusMsg   string
@@ -30,21 +34,39 @@ type NotificationsModel struct {
 	spinner     spinner.Model
 }
 
-func NewNotificationsModel(rest *api.RESTClient) NotificationsModel {
+func NewNotificationsModel(rest *api.RESTClient, gl *api.GitLabClient) NotificationsModel {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
-	return NotificationsModel{rest: rest, spinner: sp}
+	return NotificationsModel{rest: rest, gl: gl, spinner: sp}
 }
 
 func (m NotificationsModel) Init() tea.Cmd {
-	return tea.Batch(m.fetchCmd(), m.tickCmd(), m.spinner.Tick)
+	cmds := []tea.Cmd{m.fetchCmd(), m.tickCmd(), m.spinner.Tick}
+	if m.gl != nil {
+		cmds = append(cmds, m.glFetchCmd())
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m NotificationsModel) fetchCmd() tea.Cmd {
 	return func() tea.Msg {
-		notifs, err := m.rest.ListNotifications()
-		return notifsLoadedMsg{notifs: notifs, err: err}
+		var notifs []api.Notification
+		if m.rest != nil {
+			n, err := m.rest.ListNotifications()
+			if err != nil {
+				return notifsLoadedMsg{err: err, isGL: false}
+			}
+			notifs = n
+		}
+		return notifsLoadedMsg{notifs: notifs, isGL: false}
+	}
+}
+
+func (m NotificationsModel) glFetchCmd() tea.Cmd {
+	return func() tea.Msg {
+		notifs, err := m.gl.ListTodos()
+		return notifsLoadedMsg{notifs: notifs, err: err, isGL: true}
 	}
 }
 
@@ -74,8 +96,13 @@ func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	case notifsLoadedMsg:
-		m.loading = false
-		m.notifs = msg.notifs
+		if msg.isGL {
+			m.glLoading = false
+			m.notifs = append(m.notifs, msg.notifs...)
+		} else {
+			m.loading = false
+			m.notifs = msg.notifs
+		}
 		m.err = msg.err
 		m.lastRefresh = time.Now()
 		visible := m.visible()
@@ -85,7 +112,11 @@ func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 		return m, m.tickCmd()
 
 	case refreshTickMsg:
-		return m, m.fetchCmd()
+		cmds := []tea.Cmd{m.fetchCmd()}
+		if m.gl != nil {
+			cmds = append(cmds, m.glFetchCmd())
+		}
+		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
 		vis := m.visible()
@@ -108,7 +139,11 @@ func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 				title := vis[m.cursor].Subject.Title
 				m.notifs = markOneRead(m.notifs, id)
 				m.statusMsg = "✓ Marked read: " + truncate(title, 40)
-				go m.rest.MarkRead(id)
+				if m.gl != nil && strings.HasPrefix(id, "gl-") {
+					go m.gl.MarkTodoDone(id)
+				} else if m.rest != nil {
+					go m.rest.MarkRead(id)
+				}
 			}
 		case "R":
 			count := 0
@@ -121,12 +156,21 @@ func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 				m.notifs[i].Unread = false
 			}
 			m.statusMsg = fmt.Sprintf("✓ Marked all %d read", count)
-			go m.rest.MarkAllRead()
+			if m.rest != nil {
+				go m.rest.MarkAllRead()
+			}
+			if m.gl != nil {
+				go m.gl.MarkAllTodosDone()
+			}
 		case "d":
 			if m.cursor < len(vis) {
 				id := vis[m.cursor].ID
 				title := vis[m.cursor].Subject.Title
-				go m.rest.MarkRead(id)
+				if strings.HasPrefix(id, "gl-") && m.gl != nil {
+					go m.gl.MarkTodoDone(id)
+				} else if m.rest != nil {
+					go m.rest.MarkRead(id)
+				}
 				m.notifs = dismissNotif(m.notifs, id)
 				vis2 := m.visible()
 				if m.cursor >= len(vis2) {
@@ -161,8 +205,13 @@ func (m NotificationsModel) Update(msg tea.Msg) (NotificationsModel, tea.Cmd) {
 			}
 		case "ctrl+r":
 			m.loading = true
+			m.glLoading = m.gl != nil
 			m.statusMsg = ""
-			return m, m.fetchCmd()
+			cmds := []tea.Cmd{m.fetchCmd()}
+			if m.gl != nil {
+				cmds = append(cmds, m.glFetchCmd())
+			}
+			return m, tea.Batch(cmds...)
 		}
 	}
 	return m, nil
@@ -252,7 +301,7 @@ func (m NotificationsModel) View(w, h int) string {
 	header := lipgloss.NewStyle().Bold(true).Padding(1, 4).
 		Render("🔔  Notifications " + unreadBadge + filterStr)
 
-	if m.loading {
+	if m.loading || m.glLoading {
 		return header + "\n\n" + lipgloss.NewStyle().Padding(0, 4).
 			Foreground(lipgloss.Color("#888888")).Render(m.spinner.View() + " Loading…")
 	}

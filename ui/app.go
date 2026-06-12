@@ -23,6 +23,7 @@ type App struct {
 	cfg           *config.Config
 	rest          *api.RESTClient
 	gql           *api.GraphQLClient
+	gl            *api.GitLabClient
 	tags          *store.Store
 	activeTab     tab
 	width         int
@@ -34,19 +35,31 @@ type App struct {
 }
 
 func NewApp(cfg *config.Config) *App {
-	rest := api.NewRESTClient(cfg.Token, "")
-	gql := api.NewGraphQLClient(cfg.Token, "")
+	var rest *api.RESTClient
+	var gql *api.GraphQLClient
+	var gl *api.GitLabClient
+
+	if cfg.HasGitHub() {
+		rest = api.NewRESTClient(cfg.GitHubToken(), "")
+		gql = api.NewGraphQLClient(cfg.GitHubToken(), "")
+	}
+	if cfg.HasGitLab() {
+		tok, host := cfg.GitLabToken()
+		gl = api.NewGitLabClient(tok, host)
+	}
+
 	tags := store.New(store.DefaultPath())
 
 	return &App{
 		cfg:           cfg,
 		rest:          rest,
 		gql:           gql,
+		gl:            gl,
 		tags:          tags,
 		activeTab:     tabHeatmap,
-		heatmap:       NewHeatmapModel(gql),
-		stars:         NewStarsModel(rest, tags),
-		notifications: NewNotificationsModel(rest),
+		heatmap:       NewHeatmapModel(gql, gl),
+		stars:         NewStarsModel(rest, gl, tags),
+		notifications: NewNotificationsModel(rest, gl),
 	}
 }
 
@@ -136,7 +149,8 @@ func (a *App) View() string {
 		Width(a.width).
 		Render(tabs)
 
-	statusBar := statusBarStyle.Render("1/2/3: switch tabs  •  Tab: cycle  •  ?: help  •  q: quit")
+	providers := a.providerBadge()
+	statusBar := statusBarStyle.Render(providers + "  1/2/3: switch tabs  •  Tab: cycle  •  ?: help  •  q: quit")
 
 	contentHeight := a.height - 4
 	var content string
@@ -152,9 +166,30 @@ func (a *App) View() string {
 	return tabBar + "\n" + content + "\n" + statusBar
 }
 
+func (a *App) providerBadge() string {
+	var parts []string
+	if a.cfg.HasGitHub() {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#39d353")).Render("● GH"))
+	}
+	if a.cfg.HasGitLab() {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#FC6D26")).Render("● GL"))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	s := ""
+	for i, p := range parts {
+		if i > 0 {
+			s += " "
+		}
+		s += p
+	}
+	return s + "  "
+}
+
 func (a *App) helpView() string {
 	help := `
-  ghboard — GitHub Terminal Dashboard
+  ghboard — GitHub + GitLab Terminal Dashboard
 
   GLOBAL
     1 / 2 / 3   Switch tabs

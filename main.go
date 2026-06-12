@@ -18,28 +18,58 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.Token == "" {
-		fmt.Println("ghboard — GitHub Terminal Dashboard")
+	if !cfg.HasGitHub() && !cfg.HasGitLab() {
+		fmt.Println("ghboard — GitHub + GitLab Terminal Dashboard")
 		fmt.Println()
-		fmt.Println("No GitHub token found.")
-		fmt.Println("Create one at: https://github.com/settings/tokens")
-		fmt.Println("Required scopes: repo, notifications, read:user")
-		fmt.Println()
-		fmt.Print("Paste your token: ")
-
 		scanner := bufio.NewScanner(os.Stdin)
+
+		// GitHub setup
+		fmt.Println("GitHub:")
+		fmt.Println("  Create a token at: https://github.com/settings/tokens")
+		fmt.Println("  Required scopes: repo, notifications, read:user")
+		fmt.Println()
+		fmt.Print("  Paste GitHub token (or press Enter to skip): ")
 		scanner.Scan()
-		token := strings.TrimSpace(scanner.Text())
-		if token == "" {
-			fmt.Fprintln(os.Stderr, "No token provided. Exiting.")
+		ghToken := strings.TrimSpace(scanner.Text())
+
+		// GitLab setup
+		fmt.Println()
+		fmt.Println("GitLab:")
+		fmt.Println("  Create a token at: https://gitlab.com/-/user_settings/personal_access_tokens")
+		fmt.Println("  Required scopes: read_api, read_user")
+		fmt.Println()
+		fmt.Print("  Paste GitLab token (or press Enter to skip): ")
+		scanner.Scan()
+		glToken := strings.TrimSpace(scanner.Text())
+
+		var glHost string
+		if glToken != "" {
+			fmt.Print("  GitLab host [gitlab.com]: ")
+			scanner.Scan()
+			glHost = strings.TrimSpace(scanner.Text())
+			if glHost == "" {
+				glHost = "gitlab.com"
+			}
+		}
+
+		if ghToken == "" && glToken == "" {
+			fmt.Fprintln(os.Stderr, "\nNo tokens provided. Exiting.")
 			os.Exit(1)
 		}
 
-		cfg.Token = token
+		var providers []config.Provider
+		if ghToken != "" {
+			providers = append(providers, config.Provider{Type: "github", Token: ghToken})
+		}
+		if glToken != "" {
+			providers = append(providers, config.Provider{Type: "gitlab", Token: glToken, Host: glHost})
+		}
+		cfg.Providers = providers
+
 		if err := config.Save(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to save config: %v\n", err)
 		} else {
-			fmt.Println("✓ Token saved to ~/.config/ghboard/config.json")
+			fmt.Println("\n✓ Config saved to ~/.config/ghboard/config.json")
 		}
 		fmt.Println()
 	}

@@ -18,6 +18,7 @@ import (
 type starsLoadedMsg struct {
 	repos []api.StarredRepo
 	err   error
+	isGL  bool
 }
 
 type unstarDoneMsg struct {
@@ -27,6 +28,7 @@ type unstarDoneMsg struct {
 
 type StarsModel struct {
 	rest       *api.RESTClient
+	gl         *api.GitLabClient
 	tags       *store.Store
 	repos      []api.StarredRepo
 	filtered   []api.StarredRepo
@@ -44,11 +46,11 @@ type StarsModel struct {
 	spinner    spinner.Model
 }
 
-func NewStarsModel(rest *api.RESTClient, tags *store.Store) StarsModel {
+func NewStarsModel(rest *api.RESTClient, gl *api.GitLabClient, tags *store.Store) StarsModel {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#F1FA8C"))
-	return StarsModel{rest: rest, tags: tags, spinner: sp}
+	return StarsModel{rest: rest, gl: gl, tags: tags, spinner: sp}
 }
 
 func (m StarsModel) Init() tea.Cmd {
@@ -56,23 +58,42 @@ func (m StarsModel) Init() tea.Cmd {
 		return nil
 	}
 	m.loading = true
-	return tea.Batch(
+	cmds := []tea.Cmd{
 		m.spinner.Tick,
 		func() tea.Msg {
-		var all []api.StarredRepo
-		for page := 1; ; page++ {
-			repos, err := m.rest.ListStars(page)
-			if err != nil {
-				return starsLoadedMsg{err: err}
+			var all []api.StarredRepo
+			if m.rest != nil {
+				for page := 1; ; page++ {
+					repos, err := m.rest.ListStars(page)
+					if err != nil {
+						return starsLoadedMsg{err: err}
+					}
+					all = append(all, repos...)
+					if len(repos) < 100 {
+						break
+					}
+				}
 			}
-			all = append(all, repos...)
-			if len(repos) < 100 {
-				break
-			}
-		}
-		return starsLoadedMsg{repos: all}
+			return starsLoadedMsg{repos: all, isGL: false}
 		},
-	)
+	}
+	if m.gl != nil {
+		cmds = append(cmds, func() tea.Msg {
+			var all []api.StarredRepo
+			for page := 1; ; page++ {
+				repos, err := m.gl.ListStars(page)
+				if err != nil {
+					return starsLoadedMsg{err: err, isGL: true}
+				}
+				all = append(all, repos...)
+				if len(repos) < 100 {
+					break
+				}
+			}
+			return starsLoadedMsg{repos: all, isGL: true}
+		})
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m *StarsModel) allTags() []string {
@@ -133,7 +154,11 @@ func (m StarsModel) Update(msg tea.Msg) (StarsModel, tea.Cmd) {
 		return m, cmd
 	case starsLoadedMsg:
 		m.loading = false
-		m.repos = msg.repos
+		if msg.isGL {
+			m.repos = append(m.repos, msg.repos...)
+		} else {
+			m.repos = msg.repos
+		}
 		m.err = msg.err
 		m.applyFilter()
 		return m, nil

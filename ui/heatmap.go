@@ -12,27 +12,32 @@ import (
 )
 
 type contribLoadedMsg struct {
-	data *api.ContributionData
-	err  error
+	data  *api.ContributionData
+	err   error
+	isGL  bool
 }
 
 type HeatmapModel struct {
 	gql     *api.GraphQLClient
+	gl      *api.GitLabClient
 	year    int
 	data    *api.ContributionData
+	glData  *api.ContributionData
 	loading bool
 	err     error
+	glErr   error
 	cursorX int // week index
 	cursorY int // day index (0=Sun)
 	spinner spinner.Model
 }
 
-func NewHeatmapModel(gql *api.GraphQLClient) HeatmapModel {
+func NewHeatmapModel(gql *api.GraphQLClient, gl *api.GitLabClient) HeatmapModel {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#39d353"))
 	return HeatmapModel{
 		gql:     gql,
+		gl:      gl,
 		year:    time.Now().Year(),
 		spinner: sp,
 	}
@@ -41,13 +46,23 @@ func NewHeatmapModel(gql *api.GraphQLClient) HeatmapModel {
 func (m HeatmapModel) Init() tea.Cmd {
 	m.loading = true
 	year := m.year
-	return tea.Batch(
+	cmds := []tea.Cmd{
 		m.spinner.Tick,
 		func() tea.Msg {
+			if m.gql == nil {
+				return contribLoadedMsg{isGL: false}
+			}
 			data, err := m.gql.FetchContributions(year)
-			return contribLoadedMsg{data: data, err: err}
+			return contribLoadedMsg{data: data, err: err, isGL: false}
 		},
-	)
+	}
+	if m.gl != nil {
+		cmds = append(cmds, func() tea.Msg {
+			data, err := m.gl.FetchContributions(year)
+			return contribLoadedMsg{data: data, err: err, isGL: true}
+		})
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m HeatmapModel) Update(msg tea.Msg) (HeatmapModel, tea.Cmd) {
@@ -64,17 +79,22 @@ func (m HeatmapModel) Update(msg tea.Msg) (HeatmapModel, tea.Cmd) {
 		return m, cmd
 	case contribLoadedMsg:
 		m.loading = false
-		m.data = msg.data
-		m.err = msg.err
-		// Place cursor at today's position if viewing current year
-		if m.data != nil && m.year == time.Now().Year() {
-			today := time.Now()
-			todayStr := today.Format("2006-01-02")
-			for wi, week := range m.data.Weeks {
-				for _, d := range week.ContributionDays {
-					if d.Date == todayStr {
-						m.cursorX = wi
-						m.cursorY = d.Weekday
+		if msg.isGL {
+			m.glData = msg.data
+			m.glErr = msg.err
+		} else {
+			m.data = msg.data
+			m.err = msg.err
+			// Place cursor at today's position if viewing current year
+			if m.data != nil && m.year == time.Now().Year() {
+				today := time.Now()
+				todayStr := today.Format("2006-01-02")
+				for wi, week := range m.data.Weeks {
+					for _, d := range week.ContributionDays {
+						if d.Date == todayStr {
+							m.cursorX = wi
+							m.cursorY = d.Weekday
+						}
 					}
 				}
 			}
